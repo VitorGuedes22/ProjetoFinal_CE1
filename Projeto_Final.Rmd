@@ -1,0 +1,22 @@
+---
+title: "Projeto Final - CE1/2024.1"
+author: 
+  - name: "Vitor Guedes Frade"
+    affiliation: "221017130"
+  - name: "Leonardo Sallet"
+    affiliation: "232027897"
+  - name: "Ítalo Andrade dos Santos"
+    affiliation: "232026773"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
