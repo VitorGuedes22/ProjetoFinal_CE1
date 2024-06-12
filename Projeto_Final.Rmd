@@ -1,22 +1,123 @@
 ---
 title: "Projeto Final - CE1/2024.1"
 author: 
-  - name: "Vitor Guedes Frade"
-    affiliation: "221017130"
-  - name: "Leonardo Sallet"
-    affiliation: "232027897"
-  - name: "Ítalo Andrade dos Santos"
-    affiliation: "232026773"
+  - name: "Vitor Guedes Frade/221017130"
+  - name: "Leonardo Pedroso Sallet/232027897"
+  - name: "Ítalo Andrade dos Santos/232026773"
+  - name: "Luis Felipe Alvaro da Graca/222036032"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
+## Introdução
 
+Este trabalho foi realizado com o objetivo de estudar tendências salariais entre os jogadores de futebol ao redor do mundo, usando como base de dados [esta fonte](https://www.kaggle.com/datasets/ultimus/football-salaries-dataset) para a análise descritiva contida neste relatório. A base de dados referida obteve seus dados coletados entre 2023 e 2024 e possui informações de aproximadamente 40.000 jogadores. O banco de dados possui duas tabelas com as respectivas colunas em arquivos ".csv":
 
+### Tabela 1: rawWages
 
+- **Name**: Nome
+- **Club**: Clube
+- **Division**: Divisão
+- **Based**: Sede (ou Localização)
+- **Nat**: Nacionalidade
+- **EU.National**: Nacional da União Europeia
+- **Caps**: Participações na Seleção
+- **AT.Apps**: Aplicações AT (ou Jogos AT, dependendo do contexto)
+- **Position**: Posição
+- **Age**: Idade
+- **CR**: Reputação do Clube (Club Reputation)
+- **Begins**: Início do Contrato
+- **Expires**: Fim do Contrato
+- **Last.Club**: Último Clube
+- **Last.Trans..Fee**: Última Taxa de Transferência
+- **Salary**: Salário
 
+### Tabela 2: wagesCleaned
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+- **Is_top_5_League**: Está nas Top 5 Ligas
+- **Based_rich_nation**: Baseado em Nação Rica
+- **Is_top_ranked_nation**: É de Nação Bem Classificada
+- **EU_National**: Nacional da União Europeia
+- **Caps**: Participações na Seleção
+- **Apps**: Aplicações (ou Jogos, dependendo do contexto)
+- **Age**: Idade
+- **Reputation**: Reputação
+- **Is_top_prev_club**: Está no Top Clube Anterior
+- **Last_Transfer_Fee**: Última Taxa de Transferência
+- **Salary**: Salário
+
+## Preparação do Ambiente de programação
+
+```{r instala_pacotes, echo=TRUE, message=FALSE, warning=FALSE}
+#install.packages("ggplot2")
+#install.packages("dplyr")
+library(ggplot2)
+library(dplyr)
+
+# Definir o diretório de trabalho (coloque o caminho que voce usa no seu PC)
+setwd("C:/Users/vitor/OneDrive/Documentos/Materias_UNB/CE1/ProjetoFinal_CE1")
+
+#### Lendo os dados
+rawWages <- read.csv("raw_wages.csv")
+wagesClaned <- read.csv("wages_cleaned.csv")
+
+#### TOPICO 1
+salarios <- wagesClaned[,"Salary"]
+participacaoSelecao <- wagesClaned[,"Caps"]
+
 ```
 
+## Análise Descritiva
+
+As análises foram divididas em diferentes tópicos para serem produzidas correlacionando diferentes atributos dos dados com diferentes funções matemáticas e geração de gráficos distintos. Seguem os tópicos a seguir:
+
+### Tópico 1: Correlação entre Salário e Participações na Seleção (Caps)
+
+#### **Hipotése:**  
+  Jogadores com mais tempo de carreira tendem a obter melhores salários.  
+  
+#### Metodologia de análise:
+  A analise em questão foi baseada na estimativa de que uma imagem de salario x caps deveria seguir tendencia de crescimento positiva do contradominio em relação ao dominio. Tecnicas de inferncia realizadas:
+
+##### Coeficiente de correlação de Pearson
+
+  O coeficiente de correlação de Pearson é um teste que mede a relação estatística entre duas variáveis contínuas. Se a associação entre os elementos não for linear, o coeficiente não será representado adequadamente.  
+  O coeficiente de correlação de Pearson pode ter um intervalo de valores de +1 a -1. Um valor de 0 indica que não há associação entre as duas variáveis. Um valor maior que 0 indica uma associação positiva. Isto é, as variaveis são diretamente proporcionais. Um valor menor que 0 indica uma associação negativa. Isto é,as variaveis são inversamente proporcionais.
+  
+  \[ r = \frac{n(\sum xy) - (\sum x)(\sum y)}{\sqrt{[n \sum x^2 - (\sum x)^2][n \sum y^2 - (\sum y)^2]}} \]
+
+  A equação acima representa a fórmula para calcular o coeficiente, onde X e Y são duas variáveis contínuas. Para realizar tal cálculo e inferência, serão utilizadas funções próprias do R, onde passam-se conjuntos de dados das variáveis em questão como parâmetro, e a função retorna o coeficiente calculado, assim simplificando o código e eliminando a necessidade de implementação manual da equação acima. Segue a solução em R:
+  
+
+```{r t1_1, echo=TRUE, message=FALSE, warning=FALSE}
+salarios <- wagesClaned[,"Salary"]
+participacaoSelecao <- wagesClaned[,"Caps"]
+
+# Calcula correlacao de Person usando funcao do R
+correlacaoPearson <- cor(salarios, participacaoSelecao, method = "pearson")
+correlacaoPearson
+
+```
+  
+  O coeficiente de correlação de Pearson calculado acima foi 0.2552929, que é maior que 0, então a associação entre as duas variáveis em questão é verdadeira, sendo de força fraca. Além disso, foi gerado um gráfico com a linha da média salarial dos jogadores para cada valor de caps encontrado na base de dados. Seguem o código e os resultados: 
+  
+  
+```{r t1_2, echo=TRUE, message=FALSE, warning=FALSE}
+data <- data.frame(Salario = salarios, ParticipacaoSelecao = participacaoSelecao)
+
+# Calcular a média salarial para cada valor de Caps
+media_salarial_por_caps <- data %>%
+  group_by(ParticipacaoSelecao) %>%
+  summarise(media_salarial = mean(Salario, na.rm = TRUE))
+
+# Criar o gráfico de linha contínua da média salarial em função das participações na seleção
+ggplot(media_salarial_por_caps, aes(x = ParticipacaoSelecao, y = media_salarial)) +
+  geom_line(color = "blue") +  # Adiciona uma linha contínua azul
+  labs(title = "Média Salarial em Função das Participações na Seleção",
+       x = "Participações na Seleção (Caps)",
+       y = "Média Salarial") +
+  theme_minimal()
+```
+
+#### Conclusões do Tópico 1
+  Observa-se no plot acima que as maiores médias salariais são de jogadores com mais caps, mas, como esperado pela correlação fraca, o crescimento não é contínuo ao longo de toda a imagem. Portanto, compreende-se que o aumento de caps para um jogador tende a aumentar seu salário, mas isso não é uma regra para todos os casos. Esse aumento depende também de outras variáveis. 
