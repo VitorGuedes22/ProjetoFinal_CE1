@@ -74,7 +74,7 @@ As análises foram divididas em diferentes tópicos para serem produzidas correl
 ### Tópico 1: Correlação entre Salário e Participações na Seleção (Caps)
 
 #### **Hipotése:**  
-  Jogadores com mais tempo de carreira tendem a obter melhores salários.  
+  Jogadores com mais participações na seleção tendem a obter melhores salários.  
   
 #### Metodologia de análise:
   A analise em questão foi baseada na estimativa de que uma imagem de salario x caps deveria seguir tendencia de crescimento positiva do contradominio em relação ao dominio. Tecnicas de inferncia realizadas:
@@ -121,3 +121,60 @@ ggplot(media_salarial_por_caps, aes(x = ParticipacaoSelecao, y = media_salarial)
 
 #### Conclusões do Tópico 1
   Observa-se no plot acima que as maiores médias salariais são de jogadores com mais caps, mas, como esperado pela correlação fraca, o crescimento não é contínuo ao longo de toda a imagem. Portanto, compreende-se que o aumento de caps para um jogador tende a aumentar seu salário, mas isso não é uma regra para todos os casos. Esse aumento depende também de outras variáveis. 
+
+
+### Tópico 2: Impacto da Idade no Salário
+
+#### **Hipotése:**  
+  Jogadores com mais velhos tendem a obter melhores salários. 
+  
+#### Metodologia de analise
+  Como podemos encontrar vários jogadores com uma mesma idade na base de dados, não podemos escolher um jogador arbitrario da base de dados para cada idade a fim de comparação. Então a analise foi feita comparando as medias salariais por idade, assim foram obtidas a regrassão linear da variação de salário por idade, media e desvio padrão e plotadas em um gráfico para inferencia. Seguem abaixo os códigos para inferencia dos dados:
+  
+  
+```{r t2_1, echo=TRUE, message=FALSE, warning=FALSE}
+# Calcular as estatísticas resumo por idade
+summary_stats <- wagesClaned %>%
+  group_by(Age) %>%
+  summarise(
+    mean_salary = mean(Salary, na.rm = TRUE),
+    sd_salary = sd(Salary, na.rm = TRUE)
+  )
+```
+  
+  - Acima foi calculada média salárial e desvio padrão agrupado por idade, e abaixo foram plotados os dados em uma gráfico de idade x média salarial: 
+  
+    
+```{r t2_2, echo=TRUE, message=FALSE, warning=FALSE}
+# Adicionar uma coluna para a área do desvio padrão para usar na legenda
+summary_stats$fill_group <- "Desvio Padrão"
+
+# Criar o gráfico com legendas
+ggplot(summary_stats, aes(x = Age, y = mean_salary)) +
+  geom_line(aes(color = "Média Salarial"), size = 1) +  # Linha da média salarial
+  geom_ribbon(aes(ymin = mean_salary - sd_salary, ymax = mean_salary + sd_salary, fill = fill_group), alpha = 0.3) +  # Área do desvio padrão
+  geom_smooth(aes(color = "Regressão Linear"), method = "lm", linetype = "dashed", size = 1) +  # Linha de regressão linear
+  labs(title = "Média Salarial por Idade com Desvio Padrão",
+       x = "Idade (anos)",
+       y = "Média Salarial",
+       fill = "Legenda",
+       color = "Legenda") +
+  scale_y_continuous(limits = c(0, 1.1 * max(summary_stats$mean_salary, na.rm = TRUE))) +  # Ajustar a escala do eixo y para uma melhor visualização
+  scale_color_manual(values = c("Média Salarial" = "darkgreen", "Regressão Linear" = "blue")) +
+  scale_fill_manual(values = c("Desvio Padrão" = "gray")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        legend.position = "bottom")
+```
+  
+#### Conclusão do tópico 2
+  A regressão linear deu uma reta com coeficiente angular quase nulo, indicando que não há uma tendência clara de aumento ou diminuição significativa do salário médio com a idade.Mas tratando-se de uma média as cordenadas apresentam desvio padrão, que esta apresentando alta variabilidade entre os salarios dos jogadores, onde notóriamente entre os salários são mais próximos da estimativa salarial no intervalor de 25 e 35 anos. Contudo, a imagem da média salarial possui linha de crescimento predominantemente positiva em grandes intervalos do dominio, então podemos concluir uma baixa relação de crescimento entre as duas variáveis, e que depende de outras para o mesmo. A regressão linear resultou em uma reta com coeficiente angular quase nulo, indicando que não há uma tendência clara de aumento ou diminuição significativa do salário médio com a idade. No entanto, as médias das coordenadas apresentam um desvio padrão, evidenciando alta variabilidade entre os salários dos jogadores. Notoriamente, os salários são mais próximos da estimativa salarial no intervalo entre 25 e 35 anos.
+
+Contudo, a linha da média salarial apresenta uma tendência de crescimento predominantemente positiva em grandes intervalos do domínio. Portanto, podemos concluir que existe uma baixa relação de crescimento entre as duas variáveis, e que essa relação depende de outros fatores para se manifestar plenamente.
+
+
+### Tópico 3: Diferenças Salariais entre Ligas Principais e Outras Ligas
+
+  
