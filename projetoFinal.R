@@ -97,3 +97,54 @@ ggplot(rawWages, aes(x = League_Category, y = Salary, fill = League_Category)) +
         panel.grid.minor = element_blank(),  # Remover linhas de grade secundárias
         panel.border = element_blank(),      # Remover borda do painel
         axis.line = element_line(size = 0.5, colour = "black"))  # Ajustar linhas dos eixos
+
+
+#### Tópico 4 
+nacionalidades <- rawWages %>%
+  group_by(Nat) %>%
+  summarise(
+    count = length(Nat)
+  )
+
+#filtrar os jogadores por idade 
+rawWages_clean <- rawWages %>%
+  filter(!is.na(Salary) & is.numeric(Salary) & Age >= 25 & Age <= 35)
+
+#Identificar as 5 nacionalidades mais predominantes
+top_5_nationalities <- rawWages_clean %>%
+  group_by(Nat) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  top_n(5, count) %>%
+  pull(Nat)
+
+
+#Obter os jogadores das 5 nacionalidades mais predominantes
+rawWages_clean <- rawWages_clean %>%
+  filter(Nat %in% top_5_nationalities)
+
+# Executar a ANOVA
+anova_result <- aov(Salary ~ Nat, data = rawWages_clean)
+
+# Ver os resultados da ANOVA
+summary(anova_result)
+
+# Teste Tukey HSD (Honest Significant Difference)
+tukey_result <- TukeyHSD(anova_result)
+
+# Ver os resultados do teste Tukey
+print(tukey_result)
+
+# Extrair resultados do teste de Tukey
+tukey_data <- as.data.frame(tukey_result$Nat)
+tukey_data$comparison <- rownames(tukey_data)
+
+# Gráfico dos Resultados do Teste de Tukey HSD
+ggplot(tukey_data, aes(x = comparison, y = diff, ymin = lwr, ymax = upr)) +
+  geom_errorbar(width = 0.2) +
+  geom_point() +
+  labs(title = "Resultados do Teste de Tukey HSD",
+       x = "Comparação de Nacionalidades",
+       y = "Diferença de Salário") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
