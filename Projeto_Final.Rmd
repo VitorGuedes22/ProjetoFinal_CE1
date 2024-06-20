@@ -77,7 +77,7 @@ As análises foram divididas em diferentes tópicos para serem produzidas correl
 
 ### Tópico 1: Correlação entre Salário e Participações na Seleção (Caps)
 
-#### **Hipotése:**  
+#### **Hipótese:**  
   Jogadores com mais participações na seleção tendem a obter melhores salários.  
   
 #### Metodologia de análise:
@@ -182,8 +182,7 @@ Contudo, a linha da média salarial apresenta uma tendência de crescimento pred
 ### Tópico 3: Influência da Nacionalidade Europeia no Salário
 
 #### **Hipótese** 
-  Jogadores dos paises mais predominantes possuem salários mais variados.
- 
+  Dado o tamanho extenso do banco de dados, verificamos quantos países estão representados e suas respectivas contagens de jogadores. Foram selecionados os países mais predominantes para conduzir as inferências. Com mais de dois países para comparação, realizamos uma ANOVA seguida por um teste de Tukey HSD. Abaixo estão os códigos e as inferências realizadas:
 #### Metodologia de análise 
   Sendo o banco de dados muito grande, foram conferidos quantos paises estão presentes e suas respectivas quantidades de jogadores, e selecionados os paises mais predominantes para realizar as inferencias. Sendo a quantidade de paises em comparação maior que dois, realizamos uma ANOVA seguida de um teste de Tukey HSD.Segue os codigos e inferencias realizadas: 
   
@@ -290,5 +289,266 @@ ggplot(tukey_data, aes(x = comparison, y = diff, ymin = lwr, ymax = upr)) +
 - Diferença entre Itália e Alemanha (ITA-GER):A diferença média de salário é próxima de zero e não é significativa.
 
   Nenhuma das comparações entre as nacionalidades mostra uma diferença de salário estatisticamente significativa. Portanto, dentro do conjunto de dados analisado, os salários dos jogadores de futebol não variam significativamente com base na nacionalidade.
-
   
+
+### Tópico 4: Relação salárial com a riqueza da nação do jogador
+
+#### **Hipótese**
+  Jogadores pertencentes as nações consideradas ricas possuem maiores médias saláriais.
+  
+#### Metodologia de análise
+   Para realizar a inferência e obter resultados, os jogadores foram separados de acordo com a coluna "Based_rich_nation", que indica se pertencem a países ricos ou não. Após a separação, os conjuntos foram identificados e ordenados de maneira crescente pelas medianas, e foram gerados boxplots para inferir os dados e confirmar a hipótese.
+   
+   
+```{r t4_1, echo=TRUE, message=FALSE, warning=FALSE}
+rawWages["Based_rich_nation"] = wagesClaned$Based_rich_nation
+
+# Criar um fator com base na riqueza da nação
+fator_ordenados <- factor(rawWages$Based_rich_nation, levels = c(0, 1))
+
+# Plotar o boxplot ajustado
+ggplot(data = rawWages, aes(x = fator_ordenados, y = Salary, fill = as.factor(Based_rich_nation))) +
+  geom_boxplot() +
+  labs(title = "Salários por Pertencimento a Nações Ricas",
+       x = "Riqueza da Nação",
+       y = "Salário dos jogadores") +
+  scale_fill_manual(values = c("0" = "red", "1" = "blue"), 
+                    name = "Riqueza da Nação",
+                    labels = c("Pobre", "Rica")) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+``` 
+  
+  Pela escala usada no eixo y do grafico, a riqueza em detalhes é reduzida, mas a piori é notório que os maiores salários então presentes na coluna '1' correspondente aos pertencentes aos paises ricos. Portanto, para uma inferencia mais precisa foi feito um tratamento de dados para visualizar somente ate o 3º quartil dos box, assim podendo comparar as medianas e desvios padrões para concluir a inferencia.
+
+```{r t4_2, echo=TRUE, message=FALSE, warning=FALSE}
+# Adicionar a coluna Based_rich_nation ao dataframe rawWages
+rawWages["Based_rich_nation"] = wagesClaned$Based_rich_nation
+
+# Filtrar jogadores por nações ricas e pobres
+ricas <- rawWages %>% filter(Based_rich_nation == 1)
+pobres <- rawWages %>% filter(Based_rich_nation == 0)
+
+# Calcular o terceiro quartil para cada grupo
+Q3_ricas <- quantile(ricas$Salary, 0.75, na.rm = TRUE)
+Q3_pobres <- quantile(pobres$Salary, 0.75, na.rm = TRUE)
+
+# Filtrar salários até o terceiro quartil
+rawWages_filtered <- rawWages %>%
+  filter((Based_rich_nation == 1 & Salary <= Q3_ricas) |
+         (Based_rich_nation == 0 & Salary <= Q3_pobres))
+
+# Criar um fator com base na riqueza da nação
+fator_ordenados <- factor(rawWages_filtered$Based_rich_nation, levels = c(0, 1))
+
+# Plotar o boxplot ajustado
+ggplot(data = rawWages_filtered, aes(x = fator_ordenados, y = Salary, fill = as.factor(Based_rich_nation))) +
+  geom_boxplot() +
+  labs(title = "Salários por Pertencimento a Nações Ricas",
+       x = "Riqueza da Nação",
+       y = "Salário") +
+  scale_fill_manual(values = c("0" = "red", "1" = "blue"), 
+                    name = "Riqueza da Nação",
+                    labels = c("Pobre", "Rica")) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+```   
+  
+#### Conclusões Tópico 4
+
+  Pela visualização do grafico são nitídos 2º e 3º quartil superiores nos paises ricos. Portanto, infere-se que a média salarial nos paises ricos é mais alta com menor volatilidade. 
+  
+### Tópico 5: Maiores tempos de contrato tendem a possuir maiores salários
+
+#### **Hipótese**
+
+  Maiores tempos de contrato tendem a possuir maiores salários
+  
+#### Metodologia de análise
+
+  Para fazer a inferencia e avaliar a confirmação da hipótese, primeiro foi avaliado pelo teste da ANOVA se existe diferença significativa entre os salários dos diferentes tempos de contrato. 
+  
+```{r t5_1, echo=TRUE, message=FALSE, warning=FALSE}
+# Converter as colunas de datas para o formato Date
+rawWages$Begins <- as.Date(rawWages$Begins, format = "%Y/%m/%d")
+rawWages$Expires <- as.Date(rawWages$Expires, format = "%Y/%m/%d")
+
+# Calcular a duração do contrato em anos, arredondar para inteiros e garantir que sejam não-negativos
+rawWages <- rawWages %>%
+  mutate(Contract_Duration = pmax(0, round(as.numeric(difftime(Expires, Begins, units = "days")) / 365)))
+
+# Remover linhas com valores ausentes ou não numéricos nas colunas Salary e Contract_Duration_Category
+rawWages_clean <- rawWages %>%
+  filter(!is.na(Salary) & !is.na(Contract_Duration) & is.finite(Salary))
+```   
+
+  No trecho acima os dados foram tratados para uma formatação adequada para trabalhar com dados,e calculado o tempo de contrato de cada jogador em uma nova coluna chamada "Contract_Duration". A partir dos dados tratados foi calculada a ANOVA com os resultados a seguir:
+  
+```{r t5_2, echo=TRUE, message=FALSE, warning=FALSE}
+# Executar a ANOVA
+anova_Contract <- aov(Salary ~ Contract_Duration, data = rawWages_clean)
+
+# Ver os resultados da ANOVA
+summary(anova_Contract)
+```   
+
+  Com base nos resultados da ANOVA:
+
+- O valor F (4.634) e o valor p (0.00305) indicam que há uma diferença significativa nos salários dos jogadores com base na duração do contrato. Como o valor p é menor que 0.05, podemos rejeitar a hipótese nula de que não há diferença nos salários entre as diferentes durações de contrato.
+
+  O teste da ANOVA confirmou uma diferença significativa entre os salários a partir dos diferentes tempos de contrato, então foi realizado um boxplot para visualizar essa diferençade maneira mais clara e indentificar comportamentos. Segue o boxplot abaixo: 
+  
+```{r t5_3, echo=TRUE, message=FALSE, warning=FALSE}
+# Criar o gráfico boxplot
+ggplot(data = rawWages_clean, aes(x = factor(Contract_Duration), y = Salary)) +
+  geom_boxplot(outlier.shape = NA) +  # Remover outliers para focar no terceiro quartil
+  stat_summary(fun = median, geom = "point", shape = 20, size = 2, color = "red", fill = "red") +  # Adicionar ponto da mediana
+  labs(title = "Distribuição dos Salários por Duração do Contrato",
+       x = "Duração do Contrato (anos)",
+       y = "Salário") +
+  scale_fill_brewer(palette = "Set3") +  # Adicionar uma paleta de cores
+  theme_grey() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 6),  # Diminuir a fonte do eixo x
+        axis.text = element_text(size = 10)) +
+  coord_cartesian(ylim = c(0, quantile(rawWages_clean$Salary, 0.80)))  # Limitar o eixo y ao terceiro quartil
+```   
+
+  No plot acima é visível uma variação de medianas seguindo tendências inesperadas. Por hipótese, esperava-se um crescimento contínuo com o aumento do tempo de contrato. No entanto, o gráfico apresenta baixa variância das medianas para determinados intervalos, com quedas e aumentos significativamente repentinos em alguns trechos, tornando difícil estimar uma tendência de crescimento geral. Portanto, foi realizada uma inferência adicional dos dados por meio da correlação de Pearson:
+  
+```{r t5_4, echo=TRUE, message=FALSE, warning=FALSE}
+# Calcular a correlação de Pearson entre salário e duração do contrato
+salarios <- rawWages_clean$Salary
+duracao <- rawWages_clean$Contract_Duration
+
+# Calcula a correlação de Pearson usando a função do R
+correlacaoPearson <- cor(salarios, duracao, method = "pearson")
+correlacaoPearson
+```   
+  
+  Sendo a correlação de Person menor que zero, é esperada uma relação de crescimeto inversamente proporcional entre as duas variaveis. Contudo, tal comportamento é observado em pouquissimos trechos do plot onde apresenta muita instabilidade na tendencia esperada atraves do resultado da correlação inferida.
+  
+#### Conclusão Tópico 5
+  A diferença salarial foi evidente em todos os testes realizados para avaliar a hipótese. No entanto, não foi observado um padrão de crescimento diretamente proporcional no teste de visualização do boxplot, e essa tendência foi totalmente negada na análise de correlação de Pearson. Portanto, não há uma relação de crescimento diretamente proporcional entre as duas variáveis na análise descritiva, e essa correlação é influenciada diretamente por outras variáveis.
+  
+  
+  
+### Tópico 6: Diferença de Salário com Base na Posição
+#### **Hipótese**
+  A divisão do clube do jogador interfere de maneira significativa no salário.
+
+#### Metodoligia de análise
+  Para avaliar a hipótese foram separados as 5 divisões mais predominantes entre os jogadores da base. Foram feitos testes da ANOVA verificando se existe diferença significativa de salário entre os jogadores das diferentes divisões, e por teste de tukey foram avaliadas as diferenças entre os pares de clubes individualemente.
+  
+```{r t6_1, echo=TRUE, message=FALSE, warning=FALSE}
+#### TOPICO 6
+# Contar o número de jogadores por divisão e selecionar as 5 mais predominantes
+top_divisions <- names(sort(table(rawWages$Division), decreasing = TRUE))[1:5]
+
+rawWages_top_divisions <- rawWages[rawWages$Division %in% top_divisions, ]
+
+# Remover caracteres não numéricos e converter para numérico
+rawWages_top_divisions$Salary <- as.numeric(gsub("[^0-9]", "", rawWages_top_divisions$Salary))
+
+# Criar uma coluna para categorizar as divisões
+rawWages_top_divisions$Division_Category <- factor(rawWages_top_divisions$Division, levels = top_divisions)
+```  
+
+  - Acima foram obtidos as divisões mais predominantes e separadas em uma coluna, sendo elas:
+```{r t6_2, echo=FALSE, message=FALSE, warning=FALSE}
+top_divisions
+```  
+  
+##### Teste da ANOVA
+  Com os dados tratados da maneira necessaria, segue o teste realizado:
+```{r t6_3, echo=TRUE, message=FALSE, warning=FALSE}
+##Executar ANOVA e Tukey HSD (substitua com seus dados reais)
+anova_Division <- aov(Salary ~ Division_Category, data = rawWages_top_divisions)
+summary(anova_Division)
+```   
+
+  Os resultados da ANOVA indicam que há uma diferença significativa nos salários entre as divisões. A estatística F é alta (191.6), e o valor p é extremamente baixo (praticamente zero), o que nos leva a rejeitar a hipótese nula de que não há efeitos significativos das divisões nos salários. Isso sugere que pelo menos uma das divisões tem uma média de salário significativamente diferente das outras.
+
+Portanto, com base nos resultados da ANOVA, podemos concluir que as divisões têm um impacto estatisticamente significativo nos salários dos jogadores, e agora podemos prosseguir com o teste de Tukey para identificar quais divisões diferem entre si.
+
+##### Teste de Tukey HSD
+  A partir dos resultados da ANOVA foi realizado teste de Tukey a seguir para inferir os resultados e fazer as conclusões:
+
+```{r t6_4, echo=TRUE, message=FALSE, warning=FALSE}
+# Teste de Tukey para comparação múltipla
+tukey_result <- TukeyHSD(anova_Division)
+
+# Extrair resultados do teste de Tukey
+tukey_data <- as.data.frame(tukey_result$Division_Category)
+tukey_data$comparison <- rownames(tukey_data)
+
+print(tukey_result)
+```   
+  
+  Sendo esses os resultados obtidos, foram plotados no gráfico a seguir para melhor visualização e interpretação:
+
+```{r t6_5, echo=TRUE, message=FALSE, warning=FALSE}
+# Gráfico dos Resultados do Teste de Tukey HSD com ajustes
+ggplot(tukey_data, aes(x = comparison, y = diff, ymin = lwr, ymax = upr)) +
+  geom_errorbar(width = 0.2, color = "blue") +
+  geom_point(size = 1, color = "red") +
+  labs(title = "Resultados do Teste de Tukey HSD",
+       x = "Comparação de Divisões",
+       y = "Diferença de Salário") +
+  theme_minimal(base_size = 10) +  # Ajustar tamanho do texto base
+  theme(axis.text.x = element_text(angle = 60, hjust = 0.5, vjust = 0.5),
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Centralizar e ajustar tamanho do título
+        legend.key.size = unit(0.15, "cm")) +  # Reduzir o tamanho da legenda
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black")  # Adicionar linha de referência
+
+```   
+
+##### Como interpretar no plot Tukey HSD
+  
+1. Diferenças Significativas
+
+- As barras de erro que não cruzam a linha zero indicam que há uma diferença significativa entre os salários das divisões comparadas.
+- Comparações que possuem uma barra de erro totalmente acima ou abaixo da linha zero indicam que as diferenças de salários entre essas divisões são estatisticamente significativas.
+
+2. Magnitude das Diferenças
+
+- A altura dos pontos e o comprimento das barras de erro mostram a magnitude da diferença salarial entre as divisões comparadas.
+- Comparações como "Premier League - Serie A TIM" mostram uma diferença positiva significativa, indicando que os salários na Premier League são significativamente maiores do que na Serie A TIM.
+
+3. Interpretação das Comparações
+
+- Comparações como "Sky Bet Championship - Serie A TIM" e "Ligue 2 BKT - Serie A TIM" indicam que os salários na Serie A TIM são significativamente maiores do que nas ligas comparadas, já que a diferença é negativa.
+
+##### Conclusão Tópico 6
+  O teste da ANOVA mostrou evidências de diferenças significativas, e o teste de Tukey HSD confirmou. Entre as 5 divisões avaliadas, os pares de comparação "Serie BKT - Ligue 2 BKT" e "Serie BKT - Sky Bet Championship" são os únicos que apresentam diferenças tão baixas que chegam a ser insignificativas. No entanto, todas as demais comparações manifestaram grandes diferenças, onde a "Serie A TIM" foi a divisão mais predominante em diferenças significativas. Portanto, com uma pequena amostra de divisões, já é possível inferir diferenças salariais significativas entre os jogadores.
+  
+  
+## Conclusão Geral
+  Os salários dos jogadores de futebol são afetados por uma variedade de fatores, conforme demonstrado pelas análises das diferentes hipóteses:
+
+1. Participações na Seleção (Caps):
+
+  - Conclusão: Jogadores com mais participações na seleção tendem a obter melhores salários. Embora não seja uma regra absoluta, há uma tendência geral de aumento salarial com o aumento do número de caps, influenciado por outras variáveis.
+
+2. Idade dos Jogadores:
+
+  - Conclusão: A relação entre idade e salário não é clara. A regressão linear indicou uma tendência fraca, com maior variabilidade salarial observada entre 25 e 35 anos. Assim, a idade por si só não é um determinante forte dos salários.
+  
+3. Nacionalidade dos Jogadores:
+
+  - Conclusão: Não foram encontradas diferenças salariais estatisticamente significativas entre jogadores de diferentes nacionalidades dentro do conjunto de dados analisado. Portanto, a nacionalidade não é um fator predominante na determinação dos salários.
+
+4. Riqueza das Nações:
+
+  - Conclusão: Jogadores de nações consideradas ricas tendem a ter maiores médias salariais. Isso indica que a origem de jogadores de países ricos pode influenciar positivamente seus salários, possivelmente devido a melhores condições de treinamento e maior visibilidade.
+
+5. Duração dos Contratos:
+
+  - Conclusão: A análise revelou diferenças salariais associadas ao tempo de contrato, mas não foi observada uma relação diretamente proporcional. Outros fatores influenciam a correlação entre duração do contrato e salários.
+
+6. Divisão do Clube:
+
+  - Conclusão: A divisão do clube do jogador tem um impacto significativo nos salários. A análise ANOVA e o teste de Tukey HSD mostraram que algumas divisões, especialmente a "Serie A TIM", apresentaram diferenças salariais significativas em comparação com outras divisões.
+
+## Considerações Finais
+
+  Os salários dos jogadores de futebol são multifacetados e influenciados por uma combinação de fatores. Embora algumas variáveis como participações na seleção e riqueza das nações tenham uma influência positiva clara, outras como idade e duração do contrato mostram relações mais complexas e dependentes de múltiplos fatores. A divisão do clube é um determinante significativo, destacando a importância do nível da liga na remuneração dos jogadores.

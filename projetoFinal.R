@@ -1,3 +1,4 @@
+library(tidyr)
 library(ggplot2)
 library(dplyr)
 
@@ -6,6 +7,7 @@ setwd("C:/Users/vitor/OneDrive/Documentos/Materias_UNB/CE1/ProjetoFinal_CE1")
 
 #### Lendo os dados
 rawWages <- read.csv("raw_wages.csv")
+rawWages$Begins
 wagesClaned <- read.csv("wages_cleaned.csv")
 
 #### TOPICO 1
@@ -148,3 +150,161 @@ ggplot(tukey_data, aes(x = comparison, y = diff, ymin = lwr, ymax = upr)) +
        y = "Diferença de Salário") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+
+##### TOPICO 6 (4)
+# Adicionar a coluna Based_rich_nation ao dataframe rawWages
+rawWages["Based_rich_nation"] = wagesClaned$Based_rich_nation
+
+# Filtrar jogadores por nações ricas e pobres
+ricas <- rawWages %>% filter(Based_rich_nation == 1)
+pobres <- rawWages %>% filter(Based_rich_nation == 0)
+
+# Calcular o terceiro quartil para cada grupo
+Q3_ricas <- quantile(ricas$Salary, 0.75, na.rm = TRUE)
+Q3_pobres <- quantile(pobres$Salary, 0.75, na.rm = TRUE)
+
+# Filtrar salários até o terceiro quartil
+rawWages_filtered <- rawWages %>%
+  filter((Based_rich_nation == 1 & Salary <= Q3_ricas) |
+           (Based_rich_nation == 0 & Salary <= Q3_pobres))
+
+# Criar um fator com base na riqueza da nação
+fator_ordenados <- factor(rawWages_filtered$Based_rich_nation, levels = c(0, 1))
+
+# Plotar o boxplot ajustado
+ggplot(data = rawWages_filtered, aes(x = fator_ordenados, y = Salary, fill = as.factor(Based_rich_nation))) +
+  geom_boxplot() +
+  labs(title = "Salários por Pertencimento a Nações Ricas",
+       x = "Riqueza da Nação",
+       y = "Salário") +
+  scale_fill_manual(values = c("0" = "red", "1" = "blue"), 
+                    name = "Riqueza da Nação",
+                    labels = c("Pobre", "Rica")) +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+
+#### TOPICO 5
+# Calcular a duração do contrato em anos, arredondar para inteiros e garantir que sejam não-negativos
+rawWages <- rawWages %>%
+  mutate(Contract_Duration = pmax(0, round(as.numeric(difftime(Expires, Begins, units = "days")) / 365)))
+
+# Criar a coluna categórica para duração do contrato
+rawWages <- rawWages %>%
+  mutate(Contract_Duration_Category = factor(Contract_Duration))
+
+# Remover linhas com valores ausentes ou não numéricos nas colunas Salary e Contract_Duration
+rawWages_clean <- rawWages %>%
+  filter(!is.na(Salary) & !is.na(Contract_Duration) & is.finite(Salary))
+
+# Executar a ANOVA
+anova_Contract <- aov(Salary ~ Contract_Duration_Category, data = rawWages_clean)
+
+# Ver os resultados da ANOVA
+summary(anova_Contract)
+
+# Criar o gráfico boxplot
+ggplot(data = rawWages_clean, aes(x = factor(Contract_Duration_Category), y = Salary)) +
+  geom_boxplot(outlier.shape = NA) +  # Remover outliers para focar no terceiro quartil
+  stat_summary(fun = median, geom = "point", shape = 20, size = 2, color = "red", fill = "red") +  # Adicionar ponto da mediana
+  labs(title = "Distribuição dos Salários por Duração do Contrato",
+       x = "Duração do Contrato (anos)",
+       y = "Salário") +
+  scale_fill_brewer(palette = "Set3") +  # Adicionar uma paleta de cores
+  theme_grey() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 6),  # Diminuir a fonte do eixo x
+        axis.text = element_text(size = 10)) +
+  coord_cartesian(ylim = c(0, quantile(rawWages_clean$Salary, 0.80)))  # Limitar o eixo y ao terceiro quartil
+
+
+# Calcular a correlação de Pearson entre salário e duração do contrato
+salarios <- rawWages_clean$Salary
+duracao <- rawWages_clean$Contract_Duration
+
+# Calcula a correlação de Pearson usando a função do R
+correlacaoPearson <- cor(salarios, duracao, method = "pearson")
+correlacaoPearson
+
+
+#### TOPICO 6 falta dados
+# Remover linhas com valores ausentes ou não numéricos nas colunas Salary e Position
+rawWages_clean <- rawWages %>%
+  filter(!is.na(Salary) & !is.na(Position) & is.finite(Salary))
+
+# Certificar que Position é um fator
+rawWages_clean$Position <- as.factor(rawWages_clean$Position)
+
+# Executar a ANOVA
+anova_Position <- aov(Salary ~ Position, data = rawWages_clean)
+
+# Ver os resultados da ANOVA
+summary(anova_Position)
+
+
+# Criar o gráfico boxplot
+ggplot(data = rawWages_clean, aes(x = Position, y = Salary, fill = Position)) +
+  geom_boxplot(outlier.shape = NA) +  # Remover outliers para focar no terceiro quartil
+  stat_summary(fun = median, geom = "point", shape = 20, size = 2, color = "red", fill = "red") +  # Adicionar ponto da mediana
+  labs(title = "Distribuição dos Salários por Posição",
+       x = "Posição",
+       y = "Salário") +
+  scale_fill_brewer(palette = "Set3") +  # Adicionar uma paleta de cores
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 6, angle = 45, hjust = 1),  # Diminuir a fonte do eixo x e inclinar os textos
+        axis.text = element_text(size = 10)) +
+  coord_cartesian(ylim = c(0, quantile(rawWages_clean$Salary, 0.80)))  # Limitar o eixo y ao terceiro quartil
+
+
+# Contar o número de jogadores por posição
+jogadores_por_posicao <- rawWages_clean %>%
+  group_by(Position) %>%
+  summarise(count = n())
+
+# Exibir o resultado
+print(jogadores_por_posicao)
+
+
+#### VERIFICAÇÃO DE POPULAÇÃO NO BD
+View(rawWages)
+
+#### TOPICO 6
+# Contar o número de jogadores por divisão e selecionar as 5 mais predominantes
+top_divisions <- names(sort(table(rawWages$Division), decreasing = TRUE))[1:5]
+
+rawWages_top_divisions <- rawWages[rawWages$Division %in% top_divisions, ]
+
+# Remover caracteres não numéricos e converter para numérico
+rawWages_top_divisions$Salary <- as.numeric(gsub("[^0-9]", "", rawWages_top_divisions$Salary))
+
+# Criar uma coluna para categorizar as divisões
+rawWages_top_divisions$Division_Category <- factor(rawWages_top_divisions$Division, levels = top_divisions)
+
+#Executar ANOVA e Tukey HSD (substitua com seus dados reais)
+anova_result <- aov(Salary ~ Division_Category, data = rawWages_top_divisions)
+tukey_result <- TukeyHSD(anova_result)
+
+# Extrair resultados do teste de Tukey HSD e preparar os dados para o gráfico
+tukey_data <- as.data.frame(tukey_result$Division_Category)
+tukey_data$comparison <- rownames(tukey_data)
+
+# Verificar a estrutura de tukey_data para garantir que contém as colunas necessárias
+#str(tukey_data)
+
+print(tukey_result)
+
+# Gráfico dos Resultados do Teste de Tukey HSD com ajustes
+ggplot(tukey_data, aes(x = comparison, y = diff, ymin = lwr, ymax = upr)) +
+  geom_errorbar(width = 0.2, color = "blue") +
+  geom_point(size = 3, color = "red") +
+  labs(title = "Resultados do Teste de Tukey HSD",
+       x = "Comparação de Divisões",
+       y = "Diferença de Salário") +
+  theme_minimal(base_size = 10) +  # Ajustar tamanho do texto base
+  theme(axis.text.x = element_text(angle = 60, hjust = 0.5, vjust = 0.5),
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Centralizar e ajustar tamanho do título
+        legend.key.size = unit(0.15, "cm")) +  # Reduzir o tamanho da legenda
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black")  # Adicionar linha de referência
+
