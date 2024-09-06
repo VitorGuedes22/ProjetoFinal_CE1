@@ -1,0 +1,1 @@
+Descrição completa e relatório desse projeto de analise descritiva de dados usando linguagem R encontra-se no arquivo Projeto_Final.hmtl, onde pode ser baixado e renderizado em navegador padrão. O dados utilizados informam acerca de jogadores de futebol e seus respectivos salarios.
